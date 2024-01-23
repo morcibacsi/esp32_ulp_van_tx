@@ -211,7 +211,7 @@ void UlpVanTx::SendNormalFrame(const uint16_t identifier, const uint8_t data[], 
     idenByte2 = idenByte2 << 4 | 0x08;
 
     if (requireAck)
-        idenByte2 = idenByte2 << 4 | 0x04;
+        idenByte2 = idenByte2 | 0x04;
 
     // SOF
     vanFrame[0] = VAN_FRAME_SOF;
@@ -253,4 +253,18 @@ void UlpVanTx::SendReplyRequestFrame(const uint16_t identifier)
     vanFrame[4] = (crc & 0xFF);
 
     InternalSendFrame(vanFrame, 5);
+
+    /*
+    uint8_t idenByte1, idenByte2;
+    SPLIT_VAN_IDENTIFIER(identifier, &idenByte1, &idenByte2);
+    // COM part of the message is F
+    idenByte2 = idenByte2 << 4 | 0x0F;
+
+    ulp_command[1 + 0].val  = (STUFFED_VAL(VAN_FRAME_SOF)) << 6;
+    ulp_command[1 + 1].val  = (STUFFED_VAL(idenByte1)) << 6;
+    //ulp_command[1 + 2].val  = (STUFFED_VAL(byte2)) << 6; //this is for testing
+    ulp_command[1 + 2].val  = (STUFFED_VAL(idenByte2) | 1) << 6;
+    // Now set metadata (flag + length) to begin
+    ulp_command[0].val = (1 << 15) | 3;
+    */
 }
