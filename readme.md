@@ -6,10 +6,46 @@ Arduino [VAN bus][van_network] writer library utilizing the ESP32 [ULP coprocess
 - Support for 125kbps bus (VAN COMFORT bus)
 - Bus arbitration logic to safely write on the bus
 - Sending "normal" type frames and "reply request" frames
+- Persistent ACK of one configured incoming `COM=C` identifier
+- An observable count of completed ACKs
+
+### ACK configuration
+
+ACK matching deliberately supports one configured identifier so the original
+FSM ULP can complete matching between VAN samples. Configure it before traffic
+starts, or atomically replace it while traffic is active:
+
+```cpp
+ulpVanTx->SetAckIdentifier(0x8C4, true);
+// Disable ACK matching again.
+ulpVanTx->SetAckIdentifier(0x8C4, false);
+```
+
+The identifier stays active after each ACK; no rearming is needed. The ULP
+increments a 16-bit counter after it releases VAN TX from ACK[1]. An application
+can detect one or more new ACKs without clearing shared state:
+
+```cpp
+uint16_t previousAckCount = ulpVanTx->GetAckCount();
+// Later, outside the timing-critical receive path:
+uint16_t currentAckCount = ulpVanTx->GetAckCount();
+uint16_t newAcks = uint16_t(currentAckCount - previousAckCount);
+previousAckCount = currentAckCount;
+```
+
+The difference is modulo 65,536, so exactly 65,536 ACKs between reads cannot
+be distinguished from none. The configuration is one RTC word: an in-progress
+comparison uses either the old or new identifier, never a mixture. A frame
+already compared against the old identifier may still be ACKed after a
+replacement call returns; subsequent comparisons use the new identifier.
+There is no simultaneous multi-identifier ACK support or ULP rotation policy.
+
+Only incoming normal `COM=C` frames with the configured identifier enter the
+ACK tracker. The ULP does not decode DATA or validate FCS. Locally transmitted
+ReplyRequests still work, but this node does not ACK their immediate responses.
 
 ### TODO
 - Support for 62.5kbps bus (VAN BODY bus)
-- Support to reply ACK for frames
 - Support in-frame reply frames
 
 ### Not planned
@@ -68,6 +104,7 @@ A **HUGE thanks** goes to **@boarchuz** the author of the [HULP] library, withou
 - [TSS463/461 library for reading and also safely writing the VAN bus][tss_46x library]
 - [VAN bus reader for ESP32 utilizing the RMT peripheral][esp32_rmt_van_rx]
 - [VAN bus reader for STM32F103 (Blue Pill)][stm32_van_bus]
+- [VAN bus reader/writer using ESP32 ULP LP Core on ESP32-C6][esp32_ulp_lp_core_van_tx]
 
 [van_network]: https://en.wikipedia.org/wiki/Vehicle_Area_Network
 [van_analyzer]: https://github.com/morcibacsi/VanAnalyzer/
@@ -75,5 +112,6 @@ A **HUGE thanks** goes to **@boarchuz** the author of the [HULP] library, withou
 [esp32_rmt_van_rx]: https://github.com/morcibacsi/esp32_rmt_van_rx
 [tss_46x library]: https://github.com/morcibacsi/arduino_tss463_van
 [stm32_van_bus]: https://github.com/morcibacsi/stm32_arduino_van_bus
+[esp32_ulp_lp_core_van_tx]: https://github.com/morcibacsi/esp32_ulp_lp_core_van_tx
 [ulp]: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/ulp.html
 [hulp]: https://github.com/boarchuz/HULP
