@@ -1,5 +1,7 @@
 #include "UlpVanTx.h"
 
+#if CONFIG_IDF_TARGET_ESP32
+
 #include "driver/gpio.h"
 #include "esp32/ulp.h"
 #include "driver/rtc_io.h"
@@ -526,3 +528,4 @@ void UlpVanTx::SendReplyRequestFrame(const uint16_t identifier)
     ulp_command[0].val = (1 << 15) | 3;
     */
 }
+#endif

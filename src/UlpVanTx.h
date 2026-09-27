@@ -2,6 +2,9 @@
 #define UlpVanTx_h
 
 #include "sdkconfig.h"
+
+#if CONFIG_IDF_TARGET_ESP32
+
 #include "driver/gpio.h"
 #include "esp32/ulp.h"
 #include "driver/gpio.h"
@@ -53,4 +56,5 @@ class UlpVanTx
         void SendReplyRequestFrame(const uint16_t identifier);
 };
 
+#endif
 #endif
